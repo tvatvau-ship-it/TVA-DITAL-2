@@ -1,0 +1,6 @@
+{
+  "name": "TVA Digital",
+  "description": "App for streaming live TV and public domain movies/series",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
