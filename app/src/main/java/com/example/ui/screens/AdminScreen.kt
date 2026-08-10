@@ -16,6 +16,9 @@ import com.example.ui.screens.admin.AdminChannelsContent
 import com.example.ui.screens.admin.AdminCategoriesContent
 import com.example.ui.screens.admin.AdminMoviesContent
 import com.example.ui.screens.admin.AdminImportContent
+import com.example.ui.screens.admin.AdminFeaturedEventContent
+import com.example.ui.screens.admin.AdminExportContent
+import com.example.ui.screens.admin.AdminExportContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,12 +27,12 @@ fun AdminScreen(
     onNavigateToLiveTv: (() -> Unit)? = null
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Canales", "Categorías", "Catálogo", "Importar")
+    val tabs = listOf("Canales", "Categorías", "Catálogo", "Importar", "Destacado", "Fijar APK")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Administración TVA", fontWeight = FontWeight.Bold) },
+                title = { Text("Administración DKN TV", fontWeight = FontWeight.Bold) },
                 actions = {
                     Button(
                         onClick = {
@@ -136,6 +139,8 @@ fun AdminScreen(
                     1 -> AdminCategoriesContent(viewModel)
                     2 -> AdminMoviesContent(viewModel)
                     3 -> AdminImportContent(viewModel)
+                    4 -> AdminFeaturedEventContent(viewModel)
+                    5 -> AdminExportContent(viewModel)
                 }
             }
         }

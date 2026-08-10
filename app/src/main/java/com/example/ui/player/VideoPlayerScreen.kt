@@ -51,6 +51,19 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import coil.compose.AsyncImage
 import com.example.ui.AppViewModel
 import kotlinx.coroutines.delay
+import android.media.AudioManager
+import android.content.Context
+import android.view.WindowManager
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import kotlin.math.abs
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import android.provider.Settings
+import kotlin.math.max
+import kotlin.math.min
+
+
 
 @Composable
 fun VideoPlayerScreen(
@@ -73,7 +86,14 @@ fun VideoPlayerScreen(
     var isMuted by remember { mutableStateOf(false) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
     var hasError by remember { mutableStateOf(false) }
+
+    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+    
+    // PiP detection helper (if needed)
+    
     var retryCount by remember { mutableIntStateOf(0) }
+
     
     val currentCanal = if (isLive) viewModel.getCanalByUrl(streamUrl) else null
     val currentTitle = if (isLive) currentCanal?.nombre else viewModel.titulos.collectAsState().value.find { it.streamUrl == streamUrl }?.nombre
@@ -108,8 +128,10 @@ fun VideoPlayerScreen(
             
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
+        val trackSelector = DefaultTrackSelector(context)
         val exoPlayer = ExoPlayer.Builder(context)
             .setLoadControl(loadControl)
+            .setTrackSelector(trackSelector)
             .setMediaSourceFactory(mediaSourceFactory)
             .build().apply {
             setMediaItem(MediaItem.fromUri(streamUrl))
@@ -123,9 +145,12 @@ fun VideoPlayerScreen(
                     }
                 }
                 override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    if (retryCount < 3) {
-                        toastMessage = "Reconectando señal (Intento ${retryCount + 1})..."
+                    // Reconexión silenciosa e infinita o hasta 5 veces
+                    if (retryCount < 5) {
                         retryCount++
+                        toastMessage = "Reconectando señal silenciosamente..."
+                        player?.prepare()
+                        player?.play()
                     } else {
                         hasError = true
                         isLoading = false
@@ -178,8 +203,78 @@ fun VideoPlayerScreen(
             AndroidView(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable { 
-                        if (!isLocked) controlsVisible = !controlsVisible 
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                if (!isLocked) controlsVisible = !controlsVisible
+                            },
+                            onDoubleTap = { offset ->
+                                if (!isLocked) {
+                                    val width = size.width
+                                    if (offset.x < width / 2) {
+                                        // Doble tap izquierda
+                                    } else {
+                                        // Doble tap derecha
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        var swipeTotalX = 0f
+                        var swipeTotalY = 0f
+                        var swipeDirection = 0 // 1 = Y (brillo/volumen), 2 = X (buscar)
+                        var startX = 0f
+                        var isLeftHalf = false
+                        
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                if (isLocked) return@detectDragGestures
+                                swipeTotalX = 0f
+                                swipeTotalY = 0f
+                                swipeDirection = 0
+                                startX = offset.x
+                                isLeftHalf = offset.x < size.width / 2
+                            },
+                            onDragEnd = {
+                                toastMessage = null
+                            },
+                            onDrag = { change, dragAmount ->
+                                if (isLocked) return@detectDragGestures
+                                change.consume()
+                                swipeTotalX += dragAmount.x
+                                swipeTotalY += dragAmount.y
+                                
+                                if (swipeDirection == 0) {
+                                    if (abs(swipeTotalY) > abs(swipeTotalX) && abs(swipeTotalY) > 20) {
+                                        swipeDirection = 1 // vertical
+                                    } else if (abs(swipeTotalX) > abs(swipeTotalY) && abs(swipeTotalX) > 20) {
+                                        swipeDirection = 2 // horizontal
+                                    }
+                                }
+                                
+                                if (swipeDirection == 1) { // Volumen o Brillo
+                                    val delta = -dragAmount.y / 20f
+                                    if (isLeftHalf) {
+                                        // Brillo
+                                        var newBright = (currentActivity?.window?.attributes?.screenBrightness ?: 0.5f) + (delta / 10f)
+                                        if (newBright < 0.05f) newBright = 0.05f
+                                        if (newBright > 1.0f) newBright = 1.0f
+                                        val layoutParams = currentActivity?.window?.attributes
+                                        layoutParams?.screenBrightness = newBright
+                                        currentActivity?.window?.attributes = layoutParams
+                                        toastMessage = "Brillo: ${(newBright * 100).toInt()}%"
+                                    } else {
+                                        // Volumen
+                                        val currVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                        val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                                        val newVol = (currVol + (if (delta > 0) 1 else if (delta < 0) -1 else 0)).coerceIn(0, maxVol)
+                                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
+                                        toastMessage = "Volumen: ${(newVol * 100f / maxVol).toInt()}%"
+                                    }
+                                }
+                            }
+                        )
                     },
                 factory = { ctx ->
                     PlayerView(ctx).apply {

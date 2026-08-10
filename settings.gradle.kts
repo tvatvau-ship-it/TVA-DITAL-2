@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "TVA Digital"
+rootProject.name = "DKN TV"
 
 include(":app")

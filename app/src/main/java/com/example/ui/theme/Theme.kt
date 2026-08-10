@@ -12,17 +12,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFE50914), // Netflix Crimson Red
-    secondary = Color(0xFF00E5FF), // Cyan Accent
-    tertiary = Color(0xFF22242D),
-    background = Color(0xFF090A0E), // Ultra dark background
-    surface = Color(0xFF14151C), // Dark surface
-    surfaceVariant = Color(0xFF1E202A),
+    primary = Color(0xFFE040FB), // Vibrant Neon Purple (Morado Brillante)
+    secondary = Color(0xFFFFEA00), // Vibrant Yellow / Neon Gold
+    tertiary = Color(0xFF651FFF), // Deep Indigo Violet
+    background = Color(0xFF070010), // Very dark black-purple
+    surface = Color(0xFF160A26), // Dark Purple Surface
+    surfaceVariant = Color(0xFF2C134A), // Elevated Purple Surface
     onPrimary = Color.White,
     onSecondary = Color.Black,
     onTertiary = Color.White,
-    onBackground = Color(0xFFF5F5F7),
-    onSurface = Color(0xFFF5F5F7),
+    onBackground = Color.White,
+    onSurface = Color.White,
 )
 
 @Composable

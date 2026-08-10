@@ -49,6 +49,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImage
+import com.example.ui.FeaturedEvent
 import com.example.data.model.Canal
 import com.example.data.model.Categoria
 import com.example.ui.AppViewModel
@@ -65,18 +67,21 @@ fun LiveTvScreen(
     val canalesPorCategoria by viewModel.canalesPorCategoria.collectAsState()
     val todosCanales by viewModel.canales.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
+    val featuredEvent by viewModel.featuredEvent.collectAsState()
     
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Int?>(null) }
     var editingCanal by remember { mutableStateOf<Canal?>(null) }
     
-    val canalesFavoritos = todosCanales.filter { it.esFavorito }
-    val featuredCanales = todosCanales.take(5)
+    val canalesFavoritos = remember(todosCanales) { todosCanales.filter { it.esFavorito } }
+    val featuredCanales: List<Canal> = todosCanales.take(5)
     
-    val filteredCategorias = if (selectedCategory != null) {
-        categorias.filter { it.id == selectedCategory }
-    } else {
-        categorias
+    val filteredCategorias = remember(categorias, selectedCategory) {
+        if (selectedCategory != null) {
+            categorias.filter { it.id == selectedCategory }
+        } else {
+            categorias
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -137,6 +142,13 @@ fun LiveTvScreen(
                 }
             }
 
+            // Featured Event Banner
+            if (featuredEvent != null) {
+                item {
+                    FeaturedEventBanner(event = featuredEvent!!, onNavigateToPlayer = onNavigateToPlayer)
+                }
+            }
+
             // Hero Header
             item {
                 Column(
@@ -152,12 +164,12 @@ fun LiveTvScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "TVA Digital",
+                                    text = "DKN TV",
                                     style = androidx.compose.ui.text.TextStyle(
                                         brush = Brush.horizontalGradient(
                                             colors = listOf(
                                                 MaterialTheme.colorScheme.primary,
-                                                Color(0xFF00E5FF)
+                                                MaterialTheme.colorScheme.secondary
                                             )
                                         ),
                                         fontWeight = FontWeight.Black,
@@ -636,17 +648,20 @@ fun CanalCard(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        brush = Brush.linearGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color(0xFF2A2D34),
-                                Color(0xFF1E2025)
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                MaterialTheme.colorScheme.background
                             )
                         )
                     )
             ) {
                 // Main Content: Logo
                 SubcomposeAsyncImage(
-                    model = canal.logoUrl,
+                    model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                        .data(canal.logoUrl)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = canal.nombre,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
@@ -660,7 +675,7 @@ fun CanalCard(
                             Icon(
                                 imageVector = Icons.Default.TvOff,
                                 contentDescription = "Error",
-                                tint = Color.White.copy(alpha=0.3f),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha=0.5f),
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -909,3 +924,82 @@ fun QuickEditChannelDialog(
     )
 }
 
+
+@Composable
+fun FeaturedEventBanner(event: FeaturedEvent, onNavigateToPlayer: (String) -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .height(220.dp)
+            .clickable { 
+                val encoded = URLEncoder.encode(event.streamUrl, StandardCharsets.UTF_8.toString())
+                onNavigateToPlayer(encoded) 
+            },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = event.imageUrl.ifBlank { "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1000&auto=format&fit=crop" },
+                contentDescription = event.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // Gradient Overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                            startY = 100f
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "🌟 EVENTO DESTACADO",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = event.title,
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = event.time,
+                    color = Color.LightGray,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            
+            // Play Button indicator
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(64.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+        }
+    }
+}

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -47,13 +48,21 @@ fun SplashScreen(onNavigateToHome: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
                 imageVector = Icons.Default.PlayCircle,
-                contentDescription = "TVA Digital Logo",
+                contentDescription = "DKN TV Logo",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .size(100.dp)
@@ -62,11 +71,20 @@ fun SplashScreen(onNavigateToHome: () -> Unit) {
             )
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "TVA DIGITAL",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
+                text = "DKN TV",
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.alpha(alpha.value)
+            )
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "STREAMING PREMIUM",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.alpha(alpha.value),
+                letterSpacing = androidx.compose.ui.unit.TextUnit(4f, androidx.compose.ui.unit.TextUnitType.Sp)
             )
         }
     }

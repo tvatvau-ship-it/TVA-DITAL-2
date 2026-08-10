@@ -17,7 +17,45 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+data class FeaturedEvent(
+    val title: String,
+    val imageUrl: String,
+    val time: String,
+    val streamUrl: String
+)
+
 class AppViewModel(private val repository: DataRepository, private val context: Context) : ViewModel() {
+
+    private val prefs = context.getSharedPreferences("tva_prefs", Context.MODE_PRIVATE)
+
+    private val _featuredEvent = MutableStateFlow<FeaturedEvent?>(loadFeaturedEvent())
+    val featuredEvent: StateFlow<FeaturedEvent?> = _featuredEvent.asStateFlow()
+
+    private fun loadFeaturedEvent(): FeaturedEvent? {
+        val title = prefs.getString("event_title", "") ?: ""
+        if (title.isEmpty()) return null
+        return FeaturedEvent(
+            title = title,
+            imageUrl = prefs.getString("event_image", "") ?: "",
+            time = prefs.getString("event_time", "") ?: "",
+            streamUrl = prefs.getString("event_stream", "") ?: ""
+        )
+    }
+
+    fun saveFeaturedEvent(event: FeaturedEvent?) {
+        if (event == null) {
+            prefs.edit().clear().apply()
+            _featuredEvent.value = null
+        } else {
+            prefs.edit()
+                .putString("event_title", event.title)
+                .putString("event_image", event.imageUrl)
+                .putString("event_time", event.time)
+                .putString("event_stream", event.streamUrl)
+                .apply()
+            _featuredEvent.value = event
+        }
+    }
 
     private val _isEditMode = MutableStateFlow(false)
     val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
@@ -127,11 +165,23 @@ class AppViewModel(private val repository: DataRepository, private val context: 
         viewModelScope.launch {
             try {
                 val currentCanales = repository.getCanales().first()
-                if (currentCanales.size < 10) { // If missing or old small dataset, reload fresh channels from JSON
-                    loadChannelsFromJson(clearExisting = true)
+                if (currentCanales.isEmpty()) { 
+                    val defaultM3uUrl = "http://cdn-static-assets.net:80/playlist/3fNW2BYR2B/Ye38NWErCb/m3u_plus"
+                    isLoadingChannels.value = true
+                    importM3uFromUrl(
+                        url = defaultM3uUrl,
+                        clearExisting = true,
+                        onResult = { success, msg -> 
+                            if (!success) {
+                                loadChannelsError.value = "Error inicial: $msg"
+                            }
+                            isLoadingChannels.value = false
+                        }
+                    )
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+                isLoadingChannels.value = false
             }
         }
     }
@@ -372,14 +422,39 @@ class AppViewModel(private val repository: DataRepository, private val context: 
                 }
             } else if (!trimmed.startsWith("#")) {
                 if (currentName.isNotEmpty()) {
-                    result.add(
-                        ParsedM3uChannel(
-                            name = currentName,
-                            logo = currentLogo,
-                            group = currentGroup,
-                            url = trimmed
+                    val lg = currentGroup.lowercase()
+                    val ln = currentName.lowercase()
+                    val keep = lg.contains("argentin") || lg.contains("🇦🇷") ||
+                               lg.contains("noticia") || lg.contains("aire") ||
+                               lg.contains("fútbol") || lg.contains("futbol") ||
+                               lg.contains("deporte") || lg.contains("espn") ||
+                               lg.contains("tyc") || lg.contains("fox") ||
+                               lg.contains("cine") || lg.contains("serie") ||
+                               lg.contains("24/7") || lg.contains("infantil") ||
+                               lg.contains("música") || lg.contains("music") ||
+                               ln.contains("argentin") || ln.contains("arg ")
+
+                    val reject = lg.contains("chile") || lg.contains("🇨🇱") ||
+                                 lg.contains("uruguay") || lg.contains("🇺🇾") ||
+                                 lg.contains("mexico") || lg.contains("méxico") || lg.contains("🇲🇽") ||
+                                 lg.contains("españa") || lg.contains("espan") || lg.contains("🇪🇸") ||
+                                 lg.contains("colombia") || lg.contains("🇨🇴") ||
+                                 lg.contains("peru") || lg.contains("🇵🇪") ||
+                                 lg.contains("brasil") || lg.contains("🇧🇷") ||
+                                 lg.contains("usa") || lg.contains("🇺🇸") ||
+                                 lg.contains("adulto") || lg.contains("xxx") ||
+                                 lg.contains("ecuador") || lg.contains("bolivia") || lg.contains("venezuela") || lg.contains("paraguay")
+
+                    if (keep && !reject) {
+                        result.add(
+                            ParsedM3uChannel(
+                                name = currentName,
+                                logo = currentLogo,
+                                group = if (currentGroup.isBlank()) "Otros" else currentGroup,
+                                url = trimmed
+                            )
                         )
-                    )
+                    }
                     currentName = ""
                     currentLogo = ""
                     currentGroup = ""
