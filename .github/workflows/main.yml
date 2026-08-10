@@ -1,0 +1,40 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Descomprimir ZIP si fue subido como archivo
+        run: |
+          ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Descomprimiendo $ZIP_FILE..."
+            unzip -o "$ZIP_FILE"
+          fi
+
+      - name: Configurar Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Compilar APK de Android
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: Guardar APK como Artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: TVA_Digital_APK
+          path: app/build/outputs/apk/debug/app-debug.apk
