@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.ui.AppViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.launch
 
 @Composable
 fun AdminImportContent(viewModel: AppViewModel) {
@@ -160,18 +162,36 @@ fun AdminImportContent(viewModel: AppViewModel) {
             }
         }
 
+        val isGlobalLoading by viewModel.isLoadingChannels.collectAsState()
+        val globalError by viewModel.loadChannelsError.collectAsState()
+        val scope = rememberCoroutineScope()
+        
         OutlinedButton(
             onClick = {
-                viewModel.reloadDefaultChannels(clearExisting = true)
-                statusMessage = "¡Se han restablecido los canales por defecto (144 señales operativas)!"
-                isError = false
+                scope.launch {
+                    viewModel.forceLoadChannelsFromJson()
+                    if (viewModel.loadChannelsError.value == null) {
+                        statusMessage = "¡Se han restablecido los canales por defecto con éxito!"
+                        isError = false
+                    }
+                }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
+            enabled = !isLoading && !isGlobalLoading
         ) {
-            Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Restablecer Canales por Defecto")
+            if (isGlobalLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Cargando base de datos interna...")
+            } else {
+                Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Restablecer Canales (Offline JSON)")
+            }
+        }
+        
+        globalError?.let { err ->
+            Text(text = err, color = MaterialTheme.colorScheme.error)
         }
 
         // Status Card

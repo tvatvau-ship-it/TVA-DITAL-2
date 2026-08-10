@@ -30,6 +30,10 @@ class AppViewModel(private val repository: DataRepository, private val context: 
         _isEditMode.value = active
     }
 
+    val isPlayerActive = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isLoadingChannels = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val loadChannelsError = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
     val categoriasTv: StateFlow<List<Categoria>> = repository.getCategorias(TipoCategoria.CANAL)
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -136,7 +140,13 @@ class AppViewModel(private val repository: DataRepository, private val context: 
         loadChannelsFromJson(clearExisting = clearExisting)
     }
 
+    suspend fun forceLoadChannelsFromJson() {
+        loadChannelsFromJson(clearExisting = true)
+    }
+
     private suspend fun loadChannelsFromJson(clearExisting: Boolean = false) {
+        isLoadingChannels.value = true
+        loadChannelsError.value = null
         withContext(Dispatchers.IO) {
             try {
                 if (clearExisting) {
@@ -209,6 +219,9 @@ class AppViewModel(private val repository: DataRepository, private val context: 
                 repository.insertCanales(channelsToInsert)
             } catch (e: Exception) {
                 e.printStackTrace()
+                loadChannelsError.value = "Error al cargar canales: ${e.localizedMessage}"
+            } finally {
+                isLoadingChannels.value = false
             }
         }
     }
