@@ -1,0 +1,36 @@
+nombre : Crear APK de Android
+
+en :
+  empujar :
+    ramas : [ "principal", "maestro" ]
+  solicitud_de_extracción :
+    ramas : [ "principal", "maestro" ]
+  flujo_de_trabajo :
+
+empleos :
+  construir :
+    se ejecuta en : ubuntu-latest
+
+    pasos :
+    - nombre : Repositorio de Checkout
+      usos : actions/checkout@v4
+
+    - nombre : Configurar JDK 17
+      usos : actions/setup-java@v4
+      con :
+        versión de java : ' 17 '
+        distribución : ' temurin '
+
+    - nombre : Configurar Gradle 9.3.1
+      Usos : gradle/actions/setup-gradle@v3
+      con :
+        gradle-version : ' 9.3.1 '
+
+    - nombre : APK de depuración de compilación
+      ejecutar : gradle assembleDebug
+
+    - nombre : Subir APK
+      usos : actions/upload-artifact@v4
+      con :
+        nombre : dkn-tv-debug-apk
+        ruta : app/build/outputs/apk/debug/app-debug.apk
