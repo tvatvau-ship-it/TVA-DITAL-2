@@ -72,6 +72,7 @@ fun LiveTvScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Int?>(null) }
     var editingCanal by remember { mutableStateOf<Canal?>(null) }
+    var isSearchExpanded by remember { mutableStateOf(false) }
     
     val canalesFavoritos = remember(todosCanales) { todosCanales.filter { it.esFavorito } }
     val featuredCanales: List<Canal> = todosCanales.take(5)
@@ -187,7 +188,9 @@ fun LiveTvScreen(
 
                         // Live Badge or Edit Toggle Button
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            var isFocused by remember { mutableStateOf(false) }
                             FilterChip(
+                                modifier = Modifier.padding(end = 8.dp).androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused },
                                 selected = isEditMode,
                                 onClick = { viewModel.toggleEditMode() },
                                 label = { Text(if (isEditMode) "Salir Edición" else "Editar") },
@@ -198,7 +201,7 @@ fun LiveTvScreen(
                                         modifier = Modifier.size(16.dp)
                                     )
                                 },
-                                modifier = Modifier.padding(end = 8.dp)
+                                border = if (isFocused) FilterChipDefaults.filterChipBorder(enabled = true, selected = isEditMode, borderColor = Color.White, borderWidth = 3.dp) else FilterChipDefaults.filterChipBorder(enabled = true, selected = isEditMode)
                             )
 
                             Surface(
@@ -244,15 +247,22 @@ fun LiveTvScreen(
                             pageSpacing = 16.dp
                         ) { page ->
                             val canal = featuredCanales[page]
+                            var isFocused by remember { mutableStateOf(false) }
+                            val scale by animateFloatAsState(if (isFocused) 1.08f else 1f, label = "scale")
+                            val borderColor by animateColorAsState(if (isFocused) Color.White else Color.Transparent)
+                            
                             Card(
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .scale(scale)
+                                    .androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused }
                                     .clickable {
                                         val encodedUrl = URLEncoder.encode(canal.streamUrl, StandardCharsets.UTF_8.toString())
                                         onNavigateToPlayer(encodedUrl)
                                     },
                                 shape = RoundedCornerShape(20.dp),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+                                border = androidx.compose.foundation.BorderStroke(if (isFocused) 4.dp else 0.dp, borderColor),
+                                elevation = CardDefaults.cardElevation(defaultElevation = if (isFocused) 16.dp else 10.dp)
                             ) {
                                 Box(modifier = Modifier.fillMaxSize()) {
                                     SubcomposeAsyncImage(
@@ -320,31 +330,38 @@ fun LiveTvScreen(
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         
-                                        Button(
+                                        var isPlayFocused by remember { mutableStateOf(false) }
+                                        val playBorder by animateColorAsState(if (isPlayFocused) Color.White else Color.Transparent)
+                                        Surface(
                                             onClick = {
                                                 val encodedUrl = URLEncoder.encode(canal.streamUrl, StandardCharsets.UTF_8.toString())
                                                 onNavigateToPlayer(encodedUrl)
                                             },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color.White,
-                                                contentColor = Color.Black
-                                            ),
+                                            color = Color.White,
+                                            contentColor = Color.Black,
                                             shape = RoundedCornerShape(10.dp),
-                                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 6.dp),
-                                            modifier = Modifier.height(36.dp)
+                                            border = androidx.compose.foundation.BorderStroke(if (isPlayFocused) 4.dp else 0.dp, playBorder),
+                                            modifier = Modifier
+                                                .height(36.dp)
+                                                .androidx.compose.ui.focus.onFocusChanged { isPlayFocused = it.isFocused }
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.PlayArrow,
-                                                contentDescription = "Ver Ahora",
-                                                tint = Color.Black,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = "Sintonizar Canal",
-                                                fontWeight = FontWeight.Bold,
-                                                style = MaterialTheme.typography.labelLarge
-                                            )
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.PlayArrow,
+                                                    contentDescription = "Ver Ahora",
+                                                    tint = Color.Black,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = "Sintonizar Canal",
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.labelLarge
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -356,31 +373,51 @@ fun LiveTvScreen(
             
             // Search Bar
             item {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 12.dp),
-                    placeholder = { Text("Buscar canales por nombre...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Limpiar")
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 12.dp)) {
+                    if (isSearchExpanded) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Buscar canales por nombre...") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    searchQuery = ""
+                                    isSearchExpanded = false
+                                }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Cerrar Buscar")
+                                }
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = Color.Transparent
+                            ),
+                            singleLine = true
+                        )
+                    } else {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            var isSearchFocused by remember { mutableStateOf(false) }
+                            Surface(
+                                modifier = Modifier.androidx.compose.ui.focus.onFocusChanged { isSearchFocused = it.isFocused },
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                border = if (isSearchFocused) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                                onClick = { isSearchExpanded = true }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Abrir Búsqueda",
+                                    modifier = Modifier.padding(12.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent
-                    ),
-                    singleLine = true
-                )
+                    }
+                }
             }
             
             // Filter Chips with Channel Counts
@@ -392,10 +429,13 @@ fun LiveTvScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         item {
+                            var isFocused by remember { mutableStateOf(false) }
                             FilterChip(
+                                modifier = Modifier.androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused },
                                 selected = selectedCategory == null,
                                 onClick = { selectedCategory = null },
                                 label = { Text("Todos (${todosCanales.size})") },
+                                border = if (isFocused) FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == null, borderColor = Color.White, borderWidth = 3.dp) else FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == null),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -404,10 +444,13 @@ fun LiveTvScreen(
                         }
                         items(categorias) { cat ->
                             val count = (canalesPorCategoria[cat.id] ?: emptyList()).size
+                            var isFocused by remember { mutableStateOf(false) }
                             FilterChip(
+                                modifier = Modifier.androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused },
                                 selected = selectedCategory == cat.id,
                                 onClick = { selectedCategory = cat.id },
                                 label = { Text("${cat.nombre} ($count)") },
+                                border = if (isFocused) FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == cat.id, borderColor = Color.White, borderWidth = 3.dp) else FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == cat.id),
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -609,7 +652,10 @@ fun CanalCard(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, label = "scale")
+    var isFocused by remember { mutableStateOf(false) }
+    
+    val scale by animateFloatAsState(if (isPressed) 0.96f else if (isFocused) 1.08f else 1f, label = "scale")
+    val borderColor by animateColorAsState(if (isFocused) Color.White else Color.Transparent)
     
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val alpha by infiniteTransition.animateFloat(
@@ -626,6 +672,7 @@ fun CanalCard(
         modifier = Modifier
             .width(160.dp)
             .scale(scale)
+            .androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused }
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
@@ -641,8 +688,8 @@ fun CanalCard(
             colors = CardDefaults.cardColors(
                 containerColor = if (isEditMode) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent
             ),
-            border = if (isEditMode) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
-            elevation = CardDefaults.cardElevation(defaultElevation = if (isPressed) 2.dp else 8.dp)
+            border = if (isFocused) androidx.compose.foundation.BorderStroke(4.dp, borderColor) else if (isEditMode) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+            elevation = CardDefaults.cardElevation(defaultElevation = if (isPressed) 2.dp else if (isFocused) 12.dp else 8.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -927,17 +974,24 @@ fun QuickEditChannelDialog(
 
 @Composable
 fun FeaturedEventBanner(event: FeaturedEvent, onNavigateToPlayer: (String) -> Unit) {
+    var isFocused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (isFocused) 1.08f else 1f, label = "scale")
+    val borderColor by animateColorAsState(if (isFocused) Color.White else Color.Transparent)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .height(220.dp)
+            .scale(scale)
+            .androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused }
             .clickable { 
                 val encoded = URLEncoder.encode(event.streamUrl, StandardCharsets.UTF_8.toString())
                 onNavigateToPlayer(encoded) 
             },
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        border = androidx.compose.foundation.BorderStroke(if (isFocused) 4.dp else 0.dp, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isFocused) 12.dp else 8.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(

@@ -16,6 +16,9 @@ import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -173,7 +176,9 @@ fun BottomNavBar(navController: NavHostController, currentRoute: String?) {
         )
         
         items.forEach { item ->
+            var isFocused by remember { mutableStateOf(false) }
             NavigationBarItem(
+                modifier = Modifier.androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused },
                 icon = { Icon(item.icon, contentDescription = item.title) },
                 label = { Text(item.title) },
                 selected = currentRoute == item.route,
@@ -189,9 +194,9 @@ fun BottomNavBar(navController: NavHostController, currentRoute: String?) {
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.primary,
                     selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    unselectedIconColor = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    unselectedTextColor = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = if (isFocused) 0.3f else 0.15f)
                 )
             )
         }

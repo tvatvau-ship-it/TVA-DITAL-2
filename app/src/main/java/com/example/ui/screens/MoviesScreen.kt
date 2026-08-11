@@ -55,6 +55,7 @@ fun MoviesScreen(
     
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Int?>(null) }
+    var isSearchExpanded by remember { mutableStateOf(false) }
     
     val titulosFavoritos = titulos.filter { it.esFavorito }
     val featuredTitulos = titulos.take(5)
@@ -149,9 +150,15 @@ fun MoviesScreen(
                         pageSpacing = 16.dp
                     ) { page ->
                         val titulo = featuredTitulos[page]
+                        var isFocused by remember { mutableStateOf(false) }
+                        val scale by animateFloatAsState(if (isFocused) 1.08f else 1f, label = "scale")
+                        val borderColor by animateColorAsState(if (isFocused) Color.White else Color.Transparent)
+                        
                         Card(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .scale(scale)
+                                .androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused }
                                 .clickable {
                                     if (!titulo.streamUrl.isNullOrEmpty()) {
                                         val encodedUrl = URLEncoder.encode(titulo.streamUrl, StandardCharsets.UTF_8.toString())
@@ -159,7 +166,8 @@ fun MoviesScreen(
                                     }
                                 },
                             shape = RoundedCornerShape(20.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+                            border = androidx.compose.foundation.BorderStroke(if (isFocused) 4.dp else 0.dp, borderColor),
+                            elevation = CardDefaults.cardElevation(defaultElevation = if (isFocused) 16.dp else 10.dp)
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 SubcomposeAsyncImage(
@@ -241,33 +249,40 @@ fun MoviesScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
                                     
                                     // Netflix Play Action Button
-                                    Button(
+                                    var isPlayFocused by remember { mutableStateOf(false) }
+                                    val playBorder by animateColorAsState(if (isPlayFocused) Color.White else Color.Transparent)
+                                    Surface(
                                         onClick = {
                                             if (!titulo.streamUrl.isNullOrEmpty()) {
                                                 val encodedUrl = URLEncoder.encode(titulo.streamUrl, StandardCharsets.UTF_8.toString())
                                                 onNavigateToPlayer(encodedUrl)
                                             }
                                         },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color.White,
-                                            contentColor = Color.Black
-                                        ),
+                                        color = Color.White,
+                                        contentColor = Color.Black,
                                         shape = RoundedCornerShape(10.dp),
-                                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                                        modifier = Modifier.height(38.dp)
+                                        border = androidx.compose.foundation.BorderStroke(if (isPlayFocused) 4.dp else 0.dp, playBorder),
+                                        modifier = Modifier
+                                            .height(38.dp)
+                                            .androidx.compose.ui.focus.onFocusChanged { isPlayFocused = it.isFocused }
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.PlayArrow,
-                                            contentDescription = "Reproducir",
-                                            tint = Color.Black,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "Reproducir",
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.labelLarge
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.PlayArrow,
+                                                contentDescription = "Reproducir",
+                                                tint = Color.Black,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Reproducir",
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.labelLarge
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -279,31 +294,51 @@ fun MoviesScreen(
         
         // Search Bar
         item {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 16.dp),
-                placeholder = { Text("Buscar películas o series...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Limpiar")
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 16.dp)) {
+                if (isSearchExpanded) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Buscar películas o series...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                searchQuery = ""
+                                isSearchExpanded = false
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Cerrar Buscar")
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Transparent
+                        ),
+                        singleLine = true
+                    )
+                } else {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        var isSearchFocused by remember { mutableStateOf(false) }
+                        Surface(
+                            modifier = Modifier.androidx.compose.ui.focus.onFocusChanged { isSearchFocused = it.isFocused },
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            border = if (isSearchFocused) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                            onClick = { isSearchExpanded = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Abrir Búsqueda",
+                                modifier = Modifier.padding(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
-                },
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.Transparent
-                ),
-                singleLine = true
-            )
+                }
+            }
         }
         
         // Filter Chips
@@ -315,26 +350,32 @@ fun MoviesScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
-                        FilterChip(
-                            selected = selectedCategory == null,
-                            onClick = { selectedCategory = null },
-                            label = { Text("Todos") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            var isFocused by remember { mutableStateOf(false) }
+                            FilterChip(
+                                modifier = Modifier.androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused },
+                                selected = selectedCategory == null,
+                                onClick = { selectedCategory = null },
+                                label = { Text("Todos") },
+                                border = if (isFocused) FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == null, borderColor = Color.White, borderWidth = 3.dp) else FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == null),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             )
-                        )
                     }
                     items(categorias) { cat ->
-                        FilterChip(
-                            selected = selectedCategory == cat.id,
-                            onClick = { selectedCategory = cat.id },
-                            label = { Text(cat.nombre) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            var isFocused by remember { mutableStateOf(false) }
+                            FilterChip(
+                                modifier = Modifier.androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused },
+                                selected = selectedCategory == cat.id,
+                                onClick = { selectedCategory = cat.id },
+                                label = { Text(cat.nombre) },
+                                border = if (isFocused) FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == cat.id, borderColor = Color.White, borderWidth = 3.dp) else FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == cat.id),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             )
-                        )
                     }
                 }
             }
@@ -488,21 +529,26 @@ fun TituloCategoriaRow(
 fun TituloCard(titulo: Titulo, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.95f else 1f, label = "scale")
+    var isFocused by remember { mutableStateOf(false) }
+    
+    val scale by animateFloatAsState(if (isPressed) 0.95f else if (isFocused) 1.08f else 1f, label = "scale")
+    val borderColor by animateColorAsState(if (isFocused) Color.White else Color.Transparent)
 
     Card(
         modifier = Modifier
             .width(140.dp)
             .height(210.dp)
             .scale(scale)
+            .androidx.compose.ui.focus.onFocusChanged { isFocused = it.isFocused }
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 onClick = onClick
             ),
         shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(if (isFocused) 4.dp else 0.dp, borderColor),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isPressed) 2.dp else 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isPressed) 2.dp else if (isFocused) 12.dp else 8.dp)
     ) {
         Box(
             modifier = Modifier

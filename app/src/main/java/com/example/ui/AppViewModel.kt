@@ -73,20 +73,20 @@ class AppViewModel(private val repository: DataRepository, private val context: 
     val loadChannelsError = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
     val categoriasTv: StateFlow<List<Categoria>> = repository.getCategorias(TipoCategoria.CANAL)
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val canales: StateFlow<List<Canal>> = repository.getCanales()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val canalesPorCategoria: StateFlow<Map<Int, List<Canal>>> = repository.getCanales()
         .map { list -> list.groupBy { it.categoriaId ?: -1 } }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     val categoriasVod: StateFlow<List<Categoria>> = repository.getCategorias(TipoCategoria.TITULO)
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val titulos: StateFlow<List<Titulo>> = repository.getTitulos()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun toggleFavorite(canal: Canal) = viewModelScope.launch {
         repository.updateCanal(canal.copy(esFavorito = !canal.esFavorito))
